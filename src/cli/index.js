@@ -13,6 +13,7 @@ const {
 const { issueCredential } = require('../credentials/issue');
 const { verifyCredential } = require('../credentials/verify');
 const { buildDidDocument } = require('../identity/did');
+const bs58 = require('bs58').default;
 
 function printUsage() {
   console.log(`
@@ -113,7 +114,7 @@ function handleDidResolve(did) {
   
   try {
     const keys = getDidKeys(did);
-    const publicKeyMultibase = keys.publicKey.toString('base58btc');
+    const publicKeyMultibase = 'z' + bs58.encode(keys.publicKey);
     const doc = buildDidDocument(did, publicKeyMultibase);
     console.log(JSON.stringify(doc, null, 2));
   } catch (error) {
