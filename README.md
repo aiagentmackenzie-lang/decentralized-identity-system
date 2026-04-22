@@ -1,5 +1,7 @@
 # 🆔 Decentralized Identity System (DID)
 
+[![Tests](https://img.shields.io/badge/tests-74%20passing-brightgreen)]()
+
 A modern decentralized identity system that gives users cryptographic control over their identifiers and credentials, without depending on a central identity provider.
 
 This repository is designed as a serious, security-conscious reference implementation and teaching tool for decentralized identifiers (DIDs), verifiable credentials (VCs), and zero‑trust authentication flows aligned with W3C standards.
@@ -29,7 +31,7 @@ This repository is designed as a serious, security-conscious reference implement
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/decentralized-identity-system.git
+git clone https://github.com/aiagentmackenzie-lang/decentralized-identity-system.git
 cd decentralized-identity-system
 
 # Install dependencies
@@ -174,7 +176,7 @@ npm test
 npm run test:watch
 ```
 
-All 50+ tests covering:
+All 74 tests covering:
 - Key generation, signing, and verification
 - DID creation and resolution
 - Credential issuance and verification
@@ -200,6 +202,9 @@ All 50+ tests covering:
 
 ## 🧭 Roadmap
 
+- [x] DID document resolution (did:resolve)
+- [x] Secure local wallet with key management
+- [x] Credential issuance and verification
 - [ ] Standards-compliant DID method (did:key)
 - [ ] Revocation registries and status lists
 - [ ] Advanced selective disclosure (BBS+ signatures)
@@ -214,6 +219,7 @@ All 50+ tests covering:
 - **Ed25519** - Digital signatures
 - **Jest** - Testing framework
 - **ESLint** - Code linting
+- **bs58** - Base58 encoding for multibase key format
 
 ---
 
