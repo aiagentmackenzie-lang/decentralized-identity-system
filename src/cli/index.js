@@ -23,25 +23,25 @@ Commands:
   did:create                    Create a new DID and keypair
   did:list                      List all DIDs in wallet
   did:resolve <did>            Show DID document for a DID
-  
+
   vc:issue                      Issue a credential
     --issuer <did>              Issuer DID (required)
     --subject <did>             Subject DID (required)
     --claim <key=value>         Add a claim (can be used multiple times)
     --expires <ISO-date>        Set expiration date (optional)
-    
+
   vc:list                       List all stored credentials
   vc:show <id>                 Show credential by ID
   vc:verify --id <id>          Verify a stored credential
   vc:delete --id <id>          Delete a credential
-  
+
   wallet:init                   Initialize wallet directory
   wallet:status                 Show wallet status
 
 Examples:
   node src/cli/index.js did:create
-  node src/cli/index.js vc:issue --issuer did:demo:abc --subject did:demo:def --claim role=admin
-  node src/cli/index.js vc:issue --issuer did:demo:abc --subject did:demo:def --claim role=admin --expires 2025-12-31T23:59:59Z
+  node src/cli/index.js vc:issue --issuer did:demo:ISSUER_HASH --subject did:demo:SUBJECT_HASH --claim role=admin
+  node src/cli/index.js vc:issue --issuer did:demo:ISSUER_HASH --subject did:demo:SUBJECT_HASH --claim role=admin --expires 2025-12-31T23:59:59Z
   node src/cli/index.js vc:list
   node src/cli/index.js vc:verify --id <credential-id>
 `);
@@ -51,13 +51,28 @@ function parseArgs(args) {
   const command = args[0];
   const options = {};
   const positional = [];
-  
+
+  // Keys that should accumulate into arrays when repeated (e.g., --claim a=x --claim b=y)
+  const ARRAY_KEYS = new Set(['claim']);
+
   for (let i = 1; i < args.length; i++) {
     const arg = args[i];
     if (arg.startsWith('--')) {
       const key = arg.slice(2);
       const value = args[i + 1] && !args[i + 1].startsWith('--') ? args[++i] : true;
-      options[key] = value;
+
+      if (ARRAY_KEYS.has(key)) {
+        // Accumulate repeated flags into an array
+        if (options[key] === undefined) {
+          options[key] = value;
+        } else if (Array.isArray(options[key])) {
+          options[key].push(value);
+        } else {
+          options[key] = [options[key], value];
+        }
+      } else {
+        options[key] = value;
+      }
     } else {
       positional.push(arg);
     }
@@ -114,7 +129,7 @@ function handleDidList() {
     console.log('No DIDs found in wallet.');
     return;
   }
-  
+
   console.log(`\nFound ${dids.length} DID(s):\n`);
   dids.forEach((didInfo, index) => {
     console.log(`${index + 1}. ${didInfo.did}`);
@@ -127,7 +142,7 @@ function handleDidResolve(did) {
     console.error('Error: DID required');
     process.exit(1);
   }
-  
+
   // Validate DID format before attempting resolution
   try {
     validateDid(did);
@@ -135,7 +150,7 @@ function handleDidResolve(did) {
     console.error(`Error: ${error.message}`);
     process.exit(1);
   }
-  
+
   try {
     const keys = getDidKeys(did);
     const publicKeyMultibase = 'z' + bs58.encode(keys.publicKey);
@@ -164,10 +179,10 @@ function handleVcIssue(options) {
   }
 
   const claims = parseClaims(options);
-  
+
   try {
     const issuerKeys = getDidKeys(options.issuer);
-    
+
     console.log('Issuing credential...');
     console.log(`  Issuer: ${options.issuer}`);
     console.log(`  Subject: ${options.subject}`);
@@ -175,7 +190,7 @@ function handleVcIssue(options) {
     if (options.expires) {
       console.log(`  Expires: ${options.expires}`);
     }
-    
+
     const issueOptions = {
       issuerDid: options.issuer,
       subjectDid: options.subject,
@@ -190,9 +205,9 @@ function handleVcIssue(options) {
     }
 
     const vc = issueCredential(issueOptions);
-    
+
     const credentialId = storeCredential(vc);
-    
+
     console.log('✅ Credential issued successfully!');
     console.log(`Credential ID: ${credentialId}`);
     console.log(`\nTo verify, run: node src/cli/index.js vc:verify --id ${credentialId}`);
@@ -209,7 +224,7 @@ function handleVcList() {
     console.log('No credentials found in wallet.');
     return;
   }
-  
+
   console.log(`\nFound ${credentials.length} credential(s):\n`);
   credentials.forEach((cred, index) => {
     const vc = cred.credential;
@@ -230,13 +245,13 @@ function handleVcShow(id) {
     console.error('Error: Credential ID required');
     process.exit(1);
   }
-  
+
   const credential = getCredential(id);
   if (!credential) {
     console.error(`Error: Credential ${id} not found`);
     process.exit(1);
   }
-  
+
   console.log(JSON.stringify(credential, null, 2));
 }
 
@@ -245,19 +260,19 @@ function handleVcVerify(options) {
     console.error('Error: --id required');
     process.exit(1);
   }
-  
+
   const credential = getCredential(options.id);
   if (!credential) {
     console.error(`Error: Credential ${options.id} not found`);
     process.exit(1);
   }
-  
+
   try {
     // FIX M6: Handle both string and object issuer forms
     const issuerDid = extractIssuerDid(credential.issuer);
     const issuerKeys = getDidKeys(issuerDid);
     const result = verifyCredential(credential, issuerKeys.publicKey);
-    
+
     if (result.valid) {
       console.log('✅ Credential is VALID');
       console.log(`   ${result.reason}`);
@@ -277,7 +292,7 @@ function handleVcDelete(options) {
     console.error('Error: --id required');
     process.exit(1);
   }
-  
+
   const deleted = deleteCredential(options.id);
   if (deleted) {
     console.log('✅ Credential deleted successfully');
@@ -303,14 +318,14 @@ function handleWalletStatus() {
 
 function main() {
   const args = process.argv.slice(2);
-  
+
   if (args.length === 0) {
     printUsage();
     process.exit(0);
   }
-  
+
   const { command, options, positional } = parseArgs(args);
-  
+
   try {
     switch (command) {
       case 'did:create':
