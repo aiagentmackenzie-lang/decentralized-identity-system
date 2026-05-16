@@ -1,6 +1,6 @@
 // src/wallet/wallet.js
 const { generateKeyPair, saveKeyPair, loadKeyPair } = require('../crypto/keys');
-const { publicKeyToDid } = require('../identity/did');
+const { publicKeyToDid, validateDid, sanitizeDidForPath } = require('../identity/did');
 const { saveJson, loadJson, WALLET_DIR } = require('./store');
 const path = require('path');
 const fs = require('fs');
@@ -17,7 +17,7 @@ function createDid() {
   const keyPair = generateKeyPair();
   const did = publicKeyToDid(keyPair.publicKey);
   
-  // Save keypair to wallet storage
+  // Save keypair to wallet storage (keys.js now has path traversal protection)
   saveKeyPair(WALLET_DIR, did, keyPair);
   
   // Track DID in wallet index
@@ -37,10 +37,13 @@ function createDid() {
 
 /**
  * Get a DID's keypair from wallet storage
+ * Validates DID format before loading to prevent path traversal
  * @param {string} did - The DID to retrieve keys for
  * @returns {Object} { publicKey, privateKey } buffers
+ * @throws {Error} If DID is invalid or keys not found
  */
 function getDidKeys(did) {
+  validateDid(did);
   return loadKeyPair(WALLET_DIR, did);
 }
 
@@ -58,6 +61,10 @@ function listDids() {
  * @returns {string} credentialId - Unique ID for the stored credential
  */
 function storeCredential(credential) {
+  if (!credential || typeof credential !== 'object') {
+    throw new Error('storeCredential: credential must be a non-null object');
+  }
+  
   const credentials = loadJson(CREDENTIALS_FILE) || [];
   
   // Generate unique ID for this credential
@@ -120,6 +127,9 @@ function listCredentialsForSubject(subjectDid) {
  * @returns {boolean} True if deleted, false if not found
  */
 function deleteCredential(credentialId) {
+  if (!credentialId || typeof credentialId !== 'string') {
+    return false;
+  }
   const credentials = loadJson(CREDENTIALS_FILE) || [];
   const index = credentials.findIndex(c => c.id === credentialId);
   

@@ -12,7 +12,7 @@ const {
 } = require('../wallet/wallet');
 const { issueCredential } = require('../credentials/issue');
 const { verifyCredential } = require('../credentials/verify');
-const { buildDidDocument } = require('../identity/did');
+const { buildDidDocument, validateDid } = require('../identity/did');
 const bs58 = require('bs58').default;
 
 function printUsage() {
@@ -28,6 +28,7 @@ Commands:
     --issuer <did>              Issuer DID (required)
     --subject <did>             Subject DID (required)
     --claim <key=value>         Add a claim (can be used multiple times)
+    --expires <ISO-date>        Set expiration date (optional)
     
   vc:list                       List all stored credentials
   vc:show <id>                 Show credential by ID
@@ -40,6 +41,7 @@ Commands:
 Examples:
   node src/cli/index.js did:create
   node src/cli/index.js vc:issue --issuer did:demo:abc --subject did:demo:def --claim role=admin
+  node src/cli/index.js vc:issue --issuer did:demo:abc --subject did:demo:def --claim role=admin --expires 2025-12-31T23:59:59Z
   node src/cli/index.js vc:list
   node src/cli/index.js vc:verify --id <credential-id>
 `);
@@ -84,6 +86,20 @@ function parseClaims(options) {
   return claims;
 }
 
+/**
+ * Extract a DID string from an issuer field that may be a string or object.
+ * W3C VC spec allows issuer to be either a string DID or an object { id: 'did:...' }
+ */
+function extractIssuerDid(issuer) {
+  if (typeof issuer === 'string') {
+    return issuer;
+  }
+  if (issuer && typeof issuer === 'object' && issuer.id) {
+    return issuer.id;
+  }
+  throw new Error(`Cannot extract issuer DID from: ${JSON.stringify(issuer)}`);
+}
+
 function handleDidCreate() {
   console.log('Creating new DID...');
   const result = createDid();
@@ -112,6 +128,14 @@ function handleDidResolve(did) {
     process.exit(1);
   }
   
+  // Validate DID format before attempting resolution
+  try {
+    validateDid(did);
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
+    process.exit(1);
+  }
+  
   try {
     const keys = getDidKeys(did);
     const publicKeyMultibase = 'z' + bs58.encode(keys.publicKey);
@@ -129,7 +153,16 @@ function handleVcIssue(options) {
     console.error('Error: --issuer and --subject are required');
     process.exit(1);
   }
-  
+
+  // Validate DID formats
+  try {
+    validateDid(options.issuer);
+    validateDid(options.subject);
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
+    process.exit(1);
+  }
+
   const claims = parseClaims(options);
   
   try {
@@ -139,14 +172,24 @@ function handleVcIssue(options) {
     console.log(`  Issuer: ${options.issuer}`);
     console.log(`  Subject: ${options.subject}`);
     console.log(`  Claims: ${JSON.stringify(claims)}`);
+    if (options.expires) {
+      console.log(`  Expires: ${options.expires}`);
+    }
     
-    const vc = issueCredential({
+    const issueOptions = {
       issuerDid: options.issuer,
       subjectDid: options.subject,
       subjectClaims: claims,
       issuerPublicKeyId: `${options.issuer}#key-1`,
       issuerPrivateKey: issuerKeys.privateKey
-    });
+    };
+
+    // Support optional expiration date
+    if (options.expires) {
+      issueOptions.expirationDate = options.expires;
+    }
+
+    const vc = issueCredential(issueOptions);
     
     const credentialId = storeCredential(vc);
     
@@ -172,9 +215,12 @@ function handleVcList() {
     const vc = cred.credential;
     console.log(`${index + 1}. ${cred.id}`);
     console.log(`   Type: ${vc.type?.join(', ') || 'N/A'}`);
-    console.log(`   Issuer: ${vc.issuer}`);
+    console.log(`   Issuer: ${typeof vc.issuer === 'string' ? vc.issuer : vc.issuer?.id || 'N/A'}`);
     console.log(`   Subject: ${vc.credentialSubject?.id || 'N/A'}`);
     console.log(`   Issued: ${vc.issuanceDate}`);
+    if (vc.expirationDate) {
+      console.log(`   Expires: ${vc.expirationDate}`);
+    }
     console.log(`   Stored: ${cred.storedAt}`);
   });
 }
@@ -207,7 +253,9 @@ function handleVcVerify(options) {
   }
   
   try {
-    const issuerKeys = getDidKeys(credential.issuer);
+    // FIX M6: Handle both string and object issuer forms
+    const issuerDid = extractIssuerDid(credential.issuer);
+    const issuerKeys = getDidKeys(issuerDid);
     const result = verifyCredential(credential, issuerKeys.publicKey);
     
     if (result.valid) {
@@ -312,5 +360,6 @@ if (require.main === module) {
 
 module.exports = {
   parseArgs,
-  parseClaims
+  parseClaims,
+  extractIssuerDid
 };
