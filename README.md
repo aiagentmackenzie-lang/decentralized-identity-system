@@ -1,6 +1,6 @@
 # 🆔 Decentralized Identity System (DID)
 
-[![Tests](https://img.shields.io/badge/tests-129%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-133%20passing-brightgreen)]()
 
 A modern decentralized identity system that gives users cryptographic control over their identifiers and credentials, without depending on a central identity provider.
 
@@ -12,7 +12,7 @@ This repository is designed as a serious, security-conscious reference implement
 
 ## 🚀 Features
 
-- **Decentralized Identifiers (DIDs):** URIs that associate a subject with a DID document containing public keys and service endpoints
+- **Decentralized Identifiers (DIDs):** URIs that associate a subject with a DID document containing public keys for verification
 - **Verifiable Credentials (VCs):** Signed, tamper‑evident credentials expressing claims that an issuer makes about a subject
 - **Wallet / Holder:** A local wallet process that manages keys and credentials on behalf of the user
 - **Verifier:** A component that validates credentials and cryptographic proofs without ever seeing user passwords
@@ -80,10 +80,28 @@ node src/cli/index.js vc:issue \
 node src/cli/index.js vc:list
 ```
 
+### Show a credential's full details
+
+```bash
+node src/cli/index.js vc:show CREDENTIAL_ID
+```
+
 ### Verify a credential
 
 ```bash
 node src/cli/index.js vc:verify --id CREDENTIAL_ID
+```
+
+### Delete a credential
+
+```bash
+node src/cli/index.js vc:delete --id CREDENTIAL_ID
+```
+
+### Initialize wallet directory
+
+```bash
+node src/cli/index.js wallet:init
 ```
 
 ### Check wallet status
@@ -184,7 +202,7 @@ npm test
 npm run test:watch
 ```
 
-All 129 tests covering:
+All 133 tests covering:
 - Key generation, signing, and verification
 - DID creation, resolution, and format validation
 - Credential issuance, verification, and expiration
