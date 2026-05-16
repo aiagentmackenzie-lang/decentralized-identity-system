@@ -1,12 +1,12 @@
 # 🆔 Decentralized Identity System (DID)
 
-[![Tests](https://img.shields.io/badge/tests-74%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-129%20passing-brightgreen)]()
 
 A modern decentralized identity system that gives users cryptographic control over their identifiers and credentials, without depending on a central identity provider.
 
 This repository is designed as a serious, security-conscious reference implementation and teaching tool for decentralized identifiers (DIDs), verifiable credentials (VCs), and zero‑trust authentication flows aligned with W3C standards.
 
-> ⚠️ **Status:** Educational, security‑focused reference. Not audited or hardened for production. Do not use as‑is for high‑risk environments.
+> ⚠️ **Status:** Educational, security‑focused reference. Not audited or hardened for production. Don't use as‑is for high‑risk environments.
 
 ---
 
@@ -63,14 +63,15 @@ node src/cli/index.js did:list
 node src/cli/index.js did:resolve did:demo:YOUR_DID_HASH
 ```
 
-### Issue a credential
+### Issue a credential with optional expiration
 
 ```bash
 node src/cli/index.js vc:issue \
   --issuer did:demo:ISSUER_HASH \
   --subject did:demo:SUBJECT_HASH \
   --claim role=admin \
-  --claim department=engineering
+  --claim department=engineering \
+  --expires 2025-12-31T23:59:59Z
 ```
 
 ### List stored credentials
@@ -160,7 +161,14 @@ did-system/
 │   ├── identity/
 │   ├── credentials/
 │   ├── wallet/
-│   └── cli/
+│   ├── cli/
+│   ├── integration/
+│   └── security/
+│       └── security-audit.test.js  # Regression tests for security fixes
+├── docs/
+│   ├── threat-model.md
+│   └── roadmap.md
+├── BUG-LOG.md                  # Security audit findings
 └── package.json
 ```
 
@@ -176,12 +184,14 @@ npm test
 npm run test:watch
 ```
 
-All 74 tests covering:
+All 129 tests covering:
 - Key generation, signing, and verification
-- DID creation and resolution
-- Credential issuance and verification
+- DID creation, resolution, and format validation
+- Credential issuance, verification, and expiration
 - Wallet storage and management
 - CLI argument parsing
+- Security regression tests (path traversal, input guards, permissions, canonicalize edge cases)
+- End-to-end integration flows
 
 ---
 
@@ -193,10 +203,29 @@ All 74 tests covering:
 - Wallet directory created with `0o700` permissions
 - Keys never logged or exposed
 
+### DID Validation
+- Strict `did:demo:<64-hex-char>` format validation enforced at all entry points
+- Path traversal prevention via character sanitization + `path.resolve` containment checks
+- Invalid/malicious DID strings rejected with descriptive errors
+
 ### Data Integrity
-- Canonical JSON serialization before signing
+- Canonical JSON serialization before signing (with edge-case handling: undefined, Infinity, NaN, circular refs, Date, Buffer, sparse arrays)
 - SHA-256 hashing for DID generation
 - JWS (JSON Web Signature) format for proofs
+- VC structural validation on verification (required W3C fields checked)
+- Expiration date support for time-limited credentials
+
+### Input Validation
+- All `issueCredential` parameters validated with descriptive errors
+- `verifyCredential` handles null/undefined/malformed inputs gracefully (never throws)
+- All wallet files written with `0o600` permissions to prevent PII exposure
+
+### Known Limitations (v1.0)
+- Private keys stored in plaintext (encryption-at-rest planned for Phase 3)
+- No file-level locking for concurrent wallet operations
+- No revocation infrastructure
+
+See [BUG-LOG.md](BUG-LOG.md) for full security audit findings and [docs/threat-model.md](docs/threat-model.md) for the threat model.
 
 ---
 
@@ -205,8 +234,14 @@ All 74 tests covering:
 - [x] DID document resolution (did:resolve)
 - [x] Secure local wallet with key management
 - [x] Credential issuance and verification
+- [x] Expiration date support for credentials
+- [x] DID format validation and path traversal prevention
+- [x] Input validation on all credential operations
+- [x] VC structural validation on verification
+- [x] File permissions hardened for all wallet files (0o600)
 - [ ] Standards-compliant DID method (did:key)
 - [ ] Revocation registries and status lists
+- [ ] Encrypted wallet storage (AES-256-GCM)
 - [ ] Advanced selective disclosure (BBS+ signatures)
 - [ ] Blockchain anchoring
 - [ ] Hardware-backed keys (FIDO2/WebAuthn)

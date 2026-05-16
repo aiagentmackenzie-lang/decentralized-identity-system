@@ -102,7 +102,8 @@ This document outlines the threat model for the Decentralized Identity System (D
 
 **Mitigation:**
 - Issuance timestamps included in credentials
-- Future: Expiration dates and revocation lists
+- Expiration dates now supported and verified (added in security audit fix)
+- Future: Revocation lists
 
 ### T4: Impersonation
 
@@ -142,15 +143,24 @@ This document outlines the threat model for the Decentralized Identity System (D
 | Signature Verification | Ed25519 verify | ✅ |
 | Canonical JSON | Deterministic serialization | ✅ |
 | No Secret Logging | Sanitized output | ✅ |
+| DID Validation | Regex + path traversal prevention | ✅ |
+| Path Traversal Protection | path.resolve containment check | ✅ |
+| Credential File Permissions | 0o600 on all wallet files | ✅ |
+| Input Validation | Parameter checks on issue/verify | ✅ |
+| Null Input Guards | verifyCredential never throws | ✅ |
+| Circular Reference Detection | canonicalize detects & throws | ✅ |
+| Expiration Date | Supported in issue & verify | ✅ |
+| VC Structural Validation | Required W3C VC fields checked | ✅ |
 
 ### Future Enhancements
 
 | Control | Priority | Notes |
 |---------|----------|-------|
 | HSM Support | Low | Hardware key storage |
-| Revocation Lists | Medium | Credential status checking |
+| Revocation Lists | High | Credential status checking |
+| Encrypted Wallet | **High** | AES-256-GCM for key files (raised from Medium) |
+| File Locking | Medium | Race condition prevention |
 | Audit Logging | Low | Immutable operation logs |
-| Encryption at Rest | Medium | Encrypted wallet files |
 
 ---
 
@@ -174,7 +184,7 @@ This document outlines the threat model for the Decentralized Identity System (D
 
 ### Unit Tests
 - Key generation and signing (8 tests)
-- DID creation and resolution (7 tests)
+- DID creation, resolution, and validation (12 tests)
 - Credential issuance and verification (10 tests)
 - Wallet operations (18 tests)
 - CLI functionality (7 tests)
@@ -183,11 +193,31 @@ This document outlines the threat model for the Decentralized Identity System (D
 - Full E2E flow (6 tests)
 - Edge cases and robustness (19 tests)
 
+### Security Audit Tests
+- Path traversal prevention (7 tests)
+- File permission enforcement (5 tests)
+- Input guards and validation (6 tests)
+- Canonicalize edge cases (10 tests)
+- Structural validation (5 tests)
+- Expiration date support (5 tests)
+- Issuer extraction (3 tests)
+- Round-trip integrity (2 tests)
+
 ### Security-Specific Tests
-- Tamper detection
+- DID format validation and path traversal prevention
+- Null/undefined input guards on verifyCredential
+- Canonicalize edge cases (undefined, Infinity, NaN, circular, sparse arrays, Date, Buffer)
+- File permission enforcement on all wallet files
+- Credential structural validation
+- Expiration date checking
+- Credential tamper detection
 - Wrong key rejection
 - Signature validation
-- File permission enforcement
+
+### Known Limitations (v1.0)
+- Private keys stored in plaintext (encryption-at-rest deferred to Phase 3)
+- No file locking for concurrent wallet operations (race condition acknowledged)
+- No revocation list infrastructure
 
 ---
 
@@ -212,6 +242,16 @@ This document outlines the threat model for the Decentralized Identity System (D
 5. **Key Rotation**
    - Periodic key updates
    - Forward secrecy
+
+6. **Encrypted Wallet Storage**
+   - AES-256-GCM encryption for private key files
+   - Password-based key derivation (PBKDF2, Argon2)
+   - **Priority raised from Medium to High** after S3 audit finding
+
+7. **File Locking for Wallet Operations**
+   - Advisory file locking (proper-lockfile)
+   - Prevent concurrent read-modify-write race conditions
+   - **New addition** after M5 audit finding
 
 ---
 
