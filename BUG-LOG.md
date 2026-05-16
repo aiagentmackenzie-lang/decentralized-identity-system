@@ -158,6 +158,35 @@
 
 ---
 
+## README vs Reality Verification (Round 2)
+
+### B8: parseArgs Overwrites Duplicate --claim Flags — DATA LOSS
+- **File:** `src/cli/index.js` (line ~60)
+- **Category:** Data Loss Bug
+- **Impact:** When users pass `--claim role=admin --claim dept=eng`, only the LAST claim is kept. The first is silently discarded.
+- **Description:** `parseArgs` used `options[key] = value`, overwriting previous values. CLI help says "(can be used multiple times)" but the parser never accumulated into arrays. `parseClaims` had array handling code that was unreachable.
+- **Fix:** Added `ARRAY_KEYS` set (`['claim']`) and accumulation logic: on duplicate key, converts to array instead of overwriting.
+
+### B9: README Falsely Claims DID Documents Include Service Endpoints
+- **File:** `README.md` (Features section)
+- **Category:** False Documentation Claim
+- **Impact:** Users expect `did:resolve` to produce a `service` array in DID documents, but `buildDidDocument()` only produces `id` and `verificationMethod`.
+- **Fix:** Corrected README to say "public keys for verification" instead of "public keys and service endpoints".
+
+### B10: README Missing 3 Working CLI Commands
+- **File:** `README.md` (Usage section)
+- **Category:** Documentation Gap
+- **Impact:** `vc:show`, `vc:delete`, `wallet:init` are functional commands but not documented. Users may not discover them.
+- **Fix:** Added documentation for all three commands to the README Usage section.
+
+### B11: CLI printUsage Examples Show Invalid DID Formats
+- **File:** `src/cli/index.js` (printUsage examples)
+- **Category:** Misleading Examples
+- **Impact:** Examples like `did:demo:abc` don't pass the strict `did:demo:<64-hex>` validation, confusing users who copy them.
+- **Fix:** Changed example DIDs to placeholder format `did:demo:ISSUER_HASH` / `did:demo:SUBJECT_HASH`.
+
+---
+
 ## Summary
 
 | Severity | Count | Status |
@@ -166,7 +195,8 @@
 | 🟠 High | 7 | All Fixed |
 | 🟡 Medium | 6 | 5 Fixed, 1 Deferred (race condition — requires dependency) |
 | 🟢 Low | 4 | 2 Fixed, 2 Deferred |
+| 🔵 Docs/Data | 4 | All Fixed |
 
-**Total Issues Found:** 20  
-**Total Fixed in This Audit:** 14  
+**Total Issues Found:** 24  
+**Total Fixed in This Audit:** 18  
 **Acknowledged/Deferred:** 6 (encryption-at-rest, race condition locking, credential dedup, audit logging, 2 minor)

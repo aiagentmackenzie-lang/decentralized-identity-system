@@ -187,7 +187,7 @@ This document outlines the threat model for the Decentralized Identity System (D
 - DID creation, resolution, and validation (12 tests)
 - Credential issuance and verification (10 tests)
 - Wallet operations (18 tests)
-- CLI functionality (7 tests)
+- CLI functionality including multi-claim parsing (11 tests)
 
 ### Integration Tests
 - Full E2E flow (6 tests)
@@ -202,6 +202,8 @@ This document outlines the threat model for the Decentralized Identity System (D
 - Expiration date support (5 tests)
 - Issuer extraction (3 tests)
 - Round-trip integrity (2 tests)
+
+**Total: 133 tests**
 
 ### Security-Specific Tests
 - DID format validation and path traversal prevention
