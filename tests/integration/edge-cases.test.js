@@ -114,8 +114,9 @@ describe('Edge Cases & Robustness Tests', () => {
     });
 
     it('should create valid DID document structure', () => {
-      const did = 'did:demo:abc123';
-      const publicKeyMultibase = 'zTestKey123';
+      const keyPair = generateKeyPair();
+      const did = publicKeyToDid(keyPair.publicKey);
+      const publicKeyMultibase = 'z' + Buffer.from(keyPair.publicKey).toString('base64url');
       
       const doc = buildDidDocument(did, publicKeyMultibase);
       

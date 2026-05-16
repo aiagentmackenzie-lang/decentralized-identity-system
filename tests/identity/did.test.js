@@ -1,5 +1,5 @@
 // tests/identity/did.test.js
-const { publicKeyToDid, buildDidDocument, DID_METHOD } = require('../../src/identity/did');
+const { publicKeyToDid, buildDidDocument, DID_METHOD, validateDid, DID_REGEX } = require('../../src/identity/did');
 const { generateKeyPair } = require('../../src/crypto/keys');
 
 describe('Identity Module - DID', () => {
@@ -37,42 +37,65 @@ describe('Identity Module - DID', () => {
   });
 
   describe('buildDidDocument', () => {
+    // Use valid 64-char hex DID identifiers to match DID_REGEX
+    const validDid1 = 'did:demo:' + 'a'.repeat(64);
+    const validDid2 = 'did:demo:' + 'b'.repeat(64);
+    const publicKeyMultibase = 'z123456789';
+
     it('should build a valid DID document', () => {
-      const did = 'did:demo:abc123';
-      const publicKeyMultibase = 'z123456789';
+      const doc = buildDidDocument(validDid1, publicKeyMultibase);
       
-      const doc = buildDidDocument(did, publicKeyMultibase);
-      
-      expect(doc).toHaveProperty('id', did);
+      expect(doc).toHaveProperty('id', validDid1);
       expect(doc).toHaveProperty('verificationMethod');
       expect(Array.isArray(doc.verificationMethod)).toBe(true);
       expect(doc.verificationMethod.length).toBe(1);
     });
 
     it('should include correct verification method structure', () => {
-      const did = 'did:demo:abc123';
-      const publicKeyMultibase = 'z123456789';
-      
-      const doc = buildDidDocument(did, publicKeyMultibase);
+      const doc = buildDidDocument(validDid1, publicKeyMultibase);
       const vm = doc.verificationMethod[0];
       
-      expect(vm).toHaveProperty('id', `${did}#key-1`);
+      expect(vm).toHaveProperty('id', `${validDid1}#key-1`);
       expect(vm).toHaveProperty('type', 'Ed25519VerificationKey2020');
-      expect(vm).toHaveProperty('controller', did);
+      expect(vm).toHaveProperty('controller', validDid1);
       expect(vm).toHaveProperty('publicKeyMultibase', publicKeyMultibase);
     });
 
     it('should allow different DIDs with same structure', () => {
-      const did1 = 'did:demo:abc';
-      const did2 = 'did:demo:def';
-      const publicKeyMultibase = 'zTestKey';
-      
-      const doc1 = buildDidDocument(did1, publicKeyMultibase);
-      const doc2 = buildDidDocument(did2, publicKeyMultibase);
+      const doc1 = buildDidDocument(validDid1, publicKeyMultibase);
+      const doc2 = buildDidDocument(validDid2, publicKeyMultibase);
       
       expect(doc1.id).not.toBe(doc2.id);
-      expect(doc1.verificationMethod[0].controller).toBe(did1);
-      expect(doc2.verificationMethod[0].controller).toBe(did2);
+      expect(doc1.verificationMethod[0].controller).toBe(validDid1);
+      expect(doc2.verificationMethod[0].controller).toBe(validDid2);
+    });
+  });
+
+  describe('validateDid', () => {
+    it('should accept valid did:demo DIDs', () => {
+      const keyPair = generateKeyPair();
+      const did = publicKeyToDid(keyPair.publicKey);
+      expect(() => validateDid(did)).not.toThrow();
+    });
+
+    it('should reject DIDs with wrong method', () => {
+      expect(() => validateDid('did:web:example.com')).toThrow(/Invalid DID format/);
+    });
+
+    it('should reject DIDs with path traversal characters', () => {
+      expect(() => validateDid('did:demo:test/../../evil')).toThrow(/path traversal/);
+      expect(() => validateDid('did:demo:..evil')).toThrow(/path traversal/);
+    });
+
+    it('should reject empty or non-string DIDs', () => {
+      expect(() => validateDid('')).toThrow(/non-empty string/);
+      expect(() => validateDid(null)).toThrow(/non-empty string/);
+      expect(() => validateDid(undefined)).toThrow(/non-empty string/);
+      expect(() => validateDid(123)).toThrow(/non-empty string/);
+    });
+
+    it('should reject DIDs with incorrect hash length', () => {
+      expect(() => validateDid('did:demo:abc123')).toThrow(/Invalid DID format/);
     });
   });
 });
