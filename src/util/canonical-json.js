@@ -1,7 +1,5 @@
 // src/util/canonical-json.js
 
-const SEEN = Symbol('canonicalize:seen');
-
 /**
  * Deterministic JSON canonicalization (JCS-inspired).
  * Produces a stable, reproducible string from any JSON-compatible value.

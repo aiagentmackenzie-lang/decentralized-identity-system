@@ -1,9 +1,7 @@
 // src/wallet/wallet.js
 const { generateKeyPair, saveKeyPair, loadKeyPair } = require('../crypto/keys');
-const { publicKeyToDid, validateDid, sanitizeDidForPath } = require('../identity/did');
+const { publicKeyToDid, validateDid } = require('../identity/did');
 const { saveJson, loadJson, WALLET_DIR } = require('./store');
-const path = require('path');
-const fs = require('fs');
 const crypto = require('crypto');
 
 const DIDS_FILE = 'dids.json';

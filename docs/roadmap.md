@@ -12,7 +12,7 @@ This document outlines potential enhancements to the Decentralized Identity Syst
 - Verifiable credential issuance and verification
 - Wallet storage with file permissions
 - CLI interface
-- Comprehensive test suite (74 tests)
+- Comprehensive test suite (133 tests)
 
 ---
 
